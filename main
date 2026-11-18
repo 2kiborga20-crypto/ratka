@@ -1,0 +1,66 @@
+
+import os
+import asyncio
+from aiogram import Bot, Dispatcher, F
+from aiogram.filters import Command
+from aiogram.types import (
+    Message, InlineKeyboardMarkup,
+    InlineKeyboardButton, CallbackQuery
+)
+
+TOKEN = os.getenv("BOT_TOKEN")
+ADMIN_ID = int(os.getenv("ADMIN_ID", "0"))
+
+bot = Bot(token=TOKEN)
+dp = Dispatcher()
+
+def menu():
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="📱 Информация", callback_data="info")],
+        [InlineKeyboardButton(text="📂 Файлы", callback_data="files")],
+        [InlineKeyboardButton(text="🔔 Уведомления", callback_data="notify")],
+        [InlineKeyboardButton(text="🟢 Статус", callback_data="status")]
+    ])
+
+@dp.message(Command("start"))
+async def start(message: Message):
+    if message.from_user.id != ADMIN_ID:
+        return
+    await message.answer(
+        "🔥 OpenSE Mobile\nПанель управления готова.",
+        reply_markup=menu()
+    )
+
+@dp.callback_query(F.data)
+async def buttons(callback: CallbackQuery):
+    if callback.from_user.id != ADMIN_ID:
+        await callback.answer("Нет доступа", show_alert=True)
+        return
+
+    responses = {
+        "info": "OpenSE Mobile — Telegram-панель.",
+        "files": "Отправляй файлы боту для их получения.",
+        "notify": "Уведомления доступны.",
+        "status": "🟢 Бот работает."
+    }
+
+    await callback.answer()
+    await callback.message.answer(
+        responses.get(callback.data, "Неизвестная команда.")
+    )
+
+@dp.message(F.document)
+async def receive_file(message: Message):
+    if message.from_user.id != ADMIN_ID:
+        return
+    await message.answer(
+        f"📁 Получен файл: {message.document.file_name}"
+    )
+
+async def main():
+    if not TOKEN or not ADMIN_ID:
+        raise RuntimeError("Настрой BOT_TOKEN и ADMIN_ID")
+    await dp.start_polling(bot)
+
+if __name__ == "__main__":
+    asyncio.run(main())
